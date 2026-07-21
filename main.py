@@ -34,7 +34,7 @@ app = FastAPI(
 )
 
 
-@app.post("/generate", response_model=GenerationResponse)
+@app.post("/content-generation/generate", response_model=GenerationResponse)
 def generate(request: GenerationRequest) -> GenerationResponse:
     logger.info(
         "Received generation request (generation_id=%s, is_regenerate=%s)",
