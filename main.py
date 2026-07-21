@@ -83,6 +83,22 @@ def get_agent(agent_id: str) -> AgentDetail:
     return AgentDetail(**agent)
 
 
+@app.put("/content-generation/agents/{agent_id}", response_model=AgentDetail)
+def update_agent(agent_id: str, request: AgentInput) -> AgentDetail:
+    collection = get_agents_collection()
+
+    existing = collection.find_one({"agent_id": agent_id})
+    if existing is None:
+        raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
+
+    collection.update_one({"agent_id": agent_id}, {"$set": request.model_dump()})
+    updated = collection.find_one({"agent_id": agent_id})
+
+    logger.info("Agent updated (agent_id=%s, display_name=%s)", agent_id, request.display_name)
+
+    return AgentDetail(**updated)
+
+
 @app.post("/content-generation/generate", response_model=GenerationResponse)
 def generate(request: GenerationRequest) -> GenerationResponse:
     logger.info(
