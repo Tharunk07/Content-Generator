@@ -1,0 +1,15 @@
+[project]
+name = "content-generator"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.139.2",
+    "google-cloud-storage>=3.13.0",
+    "google-genai>=2.12.1",
+    "pillow>=12.3.0",
+    "pymongo>=4.17.0",
+    "python-dotenv>=1.2.2",
+    "uvicorn[standard]>=0.51.0",
+]
