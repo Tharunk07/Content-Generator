@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from google import genai
 from google.cloud import storage
@@ -26,7 +27,8 @@ def _build_prompt(input_data: GenerationInput, draft: ContentDraft) -> str:
 
 
 def _upload_to_gcs(generation_id: str, image_bytes: bytes, mime_type: str) -> str:
-    blob = _bucket.blob(f"{generation_id}.png")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+    blob = _bucket.blob(f"{generation_id}-{timestamp}.png")
 
     logger.info("Uploading image to GCS (bucket=%s, blob=%s)", GCS_BUCKET_NAME, blob.name)
     blob.upload_from_string(image_bytes, content_type=mime_type)
