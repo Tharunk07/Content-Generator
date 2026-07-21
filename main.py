@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import connect, disconnect, get_agents_collection, get_generations_collection
 from app.schemas import (
@@ -38,6 +39,14 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/content-generation/docs",
     openapi_url="/content-generation/openapi.json",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
