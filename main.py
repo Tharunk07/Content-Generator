@@ -12,6 +12,7 @@ from app.schemas import (
     AgentDetail,
     AgentInput,
     AgentListResponse,
+    GenerationHistoryResponse,
     GenerationInput,
     GenerationMetadata,
     GenerationOutput,
@@ -81,6 +82,37 @@ def get_agent(agent_id: str) -> AgentDetail:
         raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
 
     return AgentDetail(**agent)
+
+
+@app.get(
+    "/content-generation/agents/{agent_id}/generations",
+    response_model=GenerationHistoryResponse,
+)
+def get_agent_generations(agent_id: str) -> GenerationHistoryResponse:
+    agent = get_agents_collection().find_one({"agent_id": agent_id})
+    if agent is None:
+        raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
+
+    cursor = get_generations_collection().find({"input.agent_id": agent_id}).sort(
+        "created_at", -1
+    )
+
+    generations = []
+    for doc in cursor:
+        metadata = dict(doc["metadata"])
+        metadata["created_at"] = doc["created_at"]
+        metadata["completed_at"] = doc["completed_at"]
+        generations.append(
+            GenerationResponse(
+                source=doc["source"],
+                generation_id=doc["generation_id"],
+                status=doc["status"],
+                output=GenerationOutput(**doc["output"]),
+                metadata=GenerationMetadata(**metadata),
+            )
+        )
+
+    return GenerationHistoryResponse(generations=generations)
 
 
 @app.put("/content-generation/agents/{agent_id}", response_model=AgentDetail)

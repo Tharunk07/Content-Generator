@@ -99,6 +99,10 @@ class GenerationResponse(BaseModel):
     metadata: GenerationMetadata
 
 
+class GenerationHistoryResponse(BaseModel):
+    generations: list[GenerationResponse]
+
+
 class ContentDraft(BaseModel):
     title: str = Field(description="A concise, attention-grabbing title for the content")
     content: str = Field(description="The full body of the generated content, 300-400 words")
