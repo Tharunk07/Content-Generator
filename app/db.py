@@ -30,3 +30,9 @@ def get_generations_collection() -> Collection:
     if _client is None:
         raise RuntimeError("MongoDB client is not connected")
     return _client[MONGODB_DB_NAME]["generation"]
+
+
+def get_agents_collection() -> Collection:
+    if _client is None:
+        raise RuntimeError("MongoDB client is not connected")
+    return _client[MONGODB_DB_NAME]["agents"]

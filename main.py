@@ -1,12 +1,18 @@
 import logging
+import secrets
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
-from app.db import connect, disconnect, get_generations_collection
+from app.db import connect, disconnect, get_agents_collection, get_generations_collection
 from app.schemas import (
+    AgentCreateResponse,
+    AgentDetail,
+    AgentInput,
+    AgentListResponse,
+    GenerationInput,
     GenerationMetadata,
     GenerationOutput,
     GenerationRequest,
@@ -34,6 +40,49 @@ app = FastAPI(
 )
 
 
+@app.post("/content-generation/agents", response_model=AgentCreateResponse)
+def create_agent(request: AgentInput) -> AgentCreateResponse:
+    agent_id = f"agt_{secrets.token_hex(5)}"
+    created_at = datetime.now(timezone.utc)
+    status = "created"
+
+    collection = get_agents_collection()
+    doc = request.model_dump()
+    doc["agent_id"] = agent_id
+    doc["status"] = status
+    doc["created_at"] = created_at.isoformat()
+    collection.insert_one(doc)
+
+    logger.info("Agent created (agent_id=%s, display_name=%s)", agent_id, request.display_name)
+
+    return AgentCreateResponse(
+        agent_id=agent_id,
+        status=status,
+        created_at=created_at.isoformat(),
+    )
+
+
+@app.get("/content-generation/agents", response_model=AgentListResponse)
+def list_agents() -> AgentListResponse:
+    pipeline = [
+        {"$sort": {"created_at": -1}},
+        {"$group": {"_id": "$agent_id", "doc": {"$first": "$$ROOT"}}},
+        {"$replaceRoot": {"newRoot": "$doc"}},
+        {"$sort": {"created_at": -1}},
+    ]
+    agents = [AgentDetail(**doc) for doc in get_agents_collection().aggregate(pipeline)]
+    return AgentListResponse(agents=agents)
+
+
+@app.get("/content-generation/agents/{agent_id}", response_model=AgentDetail)
+def get_agent(agent_id: str) -> AgentDetail:
+    agent = get_agents_collection().find_one({"agent_id": agent_id})
+    if agent is None:
+        raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
+
+    return AgentDetail(**agent)
+
+
 @app.post("/content-generation/generate", response_model=GenerationResponse)
 def generate(request: GenerationRequest) -> GenerationResponse:
     logger.info(
@@ -44,6 +93,28 @@ def generate(request: GenerationRequest) -> GenerationResponse:
 
     started_at = time.monotonic()
     created_at = datetime.now(timezone.utc)
+
+    agent = get_agents_collection().find_one({"agent_id": request.input.agent_id})
+    if agent is None:
+        raise HTTPException(
+            status_code=404, detail=f"Agent not found: {request.input.agent_id}"
+        )
+
+    full_input = GenerationInput(
+        agent_id=agent["agent_id"],
+        display_name=agent["display_name"],
+        description=agent["description"],
+        persona=agent["persona"],
+        content_type=agent["content_type"],
+        audience=agent["audience"],
+        tone=agent["tone"],
+        language=agent["language"],
+        visual_style=agent["visual_style"],
+        topic=request.input.topic,
+        instructions=request.input.instructions,
+        is_regenerate=request.input.is_regenerate,
+        regenerate_query=request.input.regenerate_query,
+    )
 
     collection = get_generations_collection()
 
@@ -70,9 +141,9 @@ def generate(request: GenerationRequest) -> GenerationResponse:
             )
 
     try:
-        draft = generate_content_draft(request.input, previous_content)
-        quality_score = score_content_quality(request.input, draft)
-        image_url = generate_image(request.generation_id, request.input, draft)
+        draft = generate_content_draft(full_input, previous_content)
+        quality_score = score_content_quality(full_input, draft)
+        image_url = generate_image(request.generation_id, full_input, draft)
     except Exception:
         logger.exception("Generation failed (generation_id=%s)", request.generation_id)
         raise
@@ -83,7 +154,7 @@ def generate(request: GenerationRequest) -> GenerationResponse:
         source=request.source,
         generation_id=request.generation_id,
         status="COMPLETED",
-        input=request.input,
+        input=full_input,
         output=GenerationOutput(
             title=draft.title,
             content=draft.content,

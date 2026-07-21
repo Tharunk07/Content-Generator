@@ -3,7 +3,51 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class AgentInput(BaseModel):
+    display_name: str
+    description: str
+    persona: str
+    content_type: str
+    audience: str
+    tone: str
+    language: str
+    visual_style: str
+
+
+class AgentCreateResponse(BaseModel):
+    agent_id: str
+    status: str
+    created_at: str
+
+
+class AgentDetail(BaseModel):
+    agent_id: str
+    display_name: str
+    description: str
+    persona: str
+    content_type: str
+    audience: str
+    tone: str
+    language: str
+    visual_style: str
+    status: str
+    created_at: str
+
+
+class AgentListResponse(BaseModel):
+    agents: list[AgentDetail]
+
+
+class GenerationRequestInput(BaseModel):
+    agent_id: str
+    topic: str
+    instructions: str
+    is_regenerate: bool = False
+    regenerate_query: str = ""
+
+
 class GenerationInput(BaseModel):
+    agent_id: str
     display_name: str
     description: str
     persona: str
@@ -22,7 +66,7 @@ class GenerationRequest(BaseModel):
     source: str
     generation_id: str
     status: str = "PENDING"
-    input: GenerationInput
+    input: GenerationRequestInput
 
 
 class GenerationOutput(BaseModel):
