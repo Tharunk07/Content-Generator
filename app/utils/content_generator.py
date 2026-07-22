@@ -24,7 +24,7 @@ Topic: {input_data.topic}
 Instructions: {input_data.instructions}
 
 Write the content in {input_data.language}, matching the requested tone and
-audience. The body must be between 300 and 400 words. Also produce a short,
+audience. The body must be between 500 and 800 words. Also produce a short,
 attention-grabbing title.
 """.strip()
 
